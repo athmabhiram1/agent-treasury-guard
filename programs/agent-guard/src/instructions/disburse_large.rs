@@ -91,13 +91,19 @@ pub fn handler(ctx: Context<AgentDisburseLarge>, amount: u64, idem_key: [u8; 32]
         require!(next <= m.per_payee_cap, GuardError::PerPayeeCap);
     }
 
+    let mut spent_window = ctx.accounts.treasury.spent_window;
+    let mut window_start_slot = ctx.accounts.treasury.window_start_slot;
+    let mut window_count = ctx.accounts.treasury.window_count;
     rollover_window(
-        &mut ctx.accounts.treasury.spent_window,
-        &mut ctx.accounts.treasury.window_start_slot,
-        &mut ctx.accounts.treasury.window_count,
+        &mut spent_window,
+        &mut window_start_slot,
+        &mut window_count,
         &mut ctx.accounts.mandate.per_payee_spent,
         now_slot,
     )?;
+    ctx.accounts.treasury.spent_window = spent_window;
+    ctx.accounts.treasury.window_start_slot = window_start_slot;
+    ctx.accounts.treasury.window_count = window_count;
     check_budget_velocity(
         ctx.accounts.treasury.spent_window,
         ctx.accounts.treasury.window_count,
