@@ -6,3 +6,6 @@ app/dist/
 app/node_modules/
 *.log
 .DS_Store
+.codegraph/
+.commandcode/
+.omo/run-continuation/
