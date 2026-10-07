@@ -16,8 +16,8 @@ the agent key fully stolen — enforcement is Anchor constraints + account state
 
 ## Program ID
 
-- Devnet: `Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS` (placeholder — replaced at Todo 13 deploy)
-- Explorer: https://explorer.solana.com/address/Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS?cluster=devnet
+- Devnet: `Fqq1HKJuigMVPDDAJHoqDa9nmdivUMXTFAiPPs6UaaFH` (reserved keypair 2026-10-07 — deploy with it at Todo 13)
+- Explorer: https://explorer.solana.com/address/Fqq1HKJuigMVPDDAJHoqDa9nmdivUMXTFAiPPs6UaaFH?cluster=devnet
 
 ## Demo
 

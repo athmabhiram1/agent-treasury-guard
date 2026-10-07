@@ -7,7 +7,7 @@ pub mod state;
 
 pub use instructions::*;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("Fqq1HKJuigMVPDDAJHoqDa9nmdivUMXTFAiPPs6UaaFH");
 
 pub const DEFAULT_TX_CEILING: u64 = 500_000_000;
 pub const DEFAULT_PER_PAYEE_CAP: u64 = 2_000_000_000;

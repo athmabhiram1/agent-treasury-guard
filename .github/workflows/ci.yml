@@ -12,6 +12,19 @@ jobs:
         with:
           node-version: 23.9.0
       - run: npm i -g @anchor-lang/cli@1.2.0 || cargo install --git https://github.com/otter-sec/anchor --tag v1.2.0 anchor-cli --locked
+      - name: Install Solana/Agave CLI 4.1.2 (provides cargo-build-sbf)
+        run: |
+          curl -sSfL https://github.com/anza-xyz/agave/releases/download/v4.1.2/solana-release-x86_64-unknown-linux-gnu.tar.bz2 -o /tmp/solana.tar.bz2
+          tar -xjf /tmp/solana.tar.bz2 -C /tmp
+          echo "/tmp/solana-release/bin" >> "$GITHUB_PATH"
+          solana --version
+      - name: Restore program keypair (stable ID for anchor keys check)
+        env:
+          ANCHOR_PROGRAM_KEYPAIR: ${{ secrets.ANCHOR_PROGRAM_KEYPAIR }}
+        run: |
+          mkdir -p target/deploy
+          printf '%s' "$ANCHOR_PROGRAM_KEYPAIR" > target/deploy/agent_guard-keypair.json
+          anchor keys list
       - run: anchor build
       - run: cargo test
       - run: cargo fmt --check
