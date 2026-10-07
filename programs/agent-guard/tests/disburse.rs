@@ -70,6 +70,122 @@ impl anchor_lang::Discriminator for ArgsKillSwitch {
 
 impl anchor_lang::InstructionData for ArgsKillSwitch {}
 
+struct IxCreateTreasury {
+    authority: Pubkey,
+    treasury: Pubkey,
+    system_program: Pubkey,
+}
+
+impl anchor_lang::ToAccountMetas for IxCreateTreasury {
+    fn to_account_metas(&self, _is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        vec![
+            anchor_lang::prelude::AccountMeta::new(self.authority, true),
+            anchor_lang::prelude::AccountMeta::new(self.treasury, false),
+            anchor_lang::prelude::AccountMeta::new_readonly(self.system_program, false),
+        ]
+    }
+}
+
+struct IxSignMandate {
+    authority: Pubkey,
+    treasury: Pubkey,
+    agent: Pubkey,
+    mandate: Pubkey,
+    system_program: Pubkey,
+}
+
+impl anchor_lang::ToAccountMetas for IxSignMandate {
+    fn to_account_metas(&self, _is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        vec![
+            anchor_lang::prelude::AccountMeta::new(self.authority, true),
+            anchor_lang::prelude::AccountMeta::new_readonly(self.treasury, false),
+            anchor_lang::prelude::AccountMeta::new_readonly(self.agent, false),
+            anchor_lang::prelude::AccountMeta::new(self.mandate, false),
+            anchor_lang::prelude::AccountMeta::new_readonly(self.system_program, false),
+        ]
+    }
+}
+
+struct IxAgentDisburse {
+    agent: Pubkey,
+    treasury: Pubkey,
+    mandate: Pubkey,
+    payee: Pubkey,
+    spend_record: Pubkey,
+    system_program: Pubkey,
+}
+
+impl anchor_lang::ToAccountMetas for IxAgentDisburse {
+    fn to_account_metas(&self, _is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        vec![
+            anchor_lang::prelude::AccountMeta::new(self.agent, true),
+            anchor_lang::prelude::AccountMeta::new(self.treasury, false),
+            anchor_lang::prelude::AccountMeta::new(self.mandate, false),
+            anchor_lang::prelude::AccountMeta::new(self.payee, false),
+            anchor_lang::prelude::AccountMeta::new(self.spend_record, false),
+            anchor_lang::prelude::AccountMeta::new_readonly(self.system_program, false),
+        ]
+    }
+}
+
+struct IxAgentDisburseLarge {
+    agent: Pubkey,
+    treasury: Pubkey,
+    mandate: Pubkey,
+    payee: Pubkey,
+    spend_record: Pubkey,
+    approval: Pubkey,
+    system_program: Pubkey,
+}
+
+impl anchor_lang::ToAccountMetas for IxAgentDisburseLarge {
+    fn to_account_metas(&self, _is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        vec![
+            anchor_lang::prelude::AccountMeta::new(self.agent, true),
+            anchor_lang::prelude::AccountMeta::new(self.treasury, false),
+            anchor_lang::prelude::AccountMeta::new(self.mandate, false),
+            anchor_lang::prelude::AccountMeta::new(self.payee, false),
+            anchor_lang::prelude::AccountMeta::new(self.spend_record, false),
+            anchor_lang::prelude::AccountMeta::new(self.approval, false),
+            anchor_lang::prelude::AccountMeta::new_readonly(self.system_program, false),
+        ]
+    }
+}
+
+struct IxHumanApproveLarge {
+    authority: Pubkey,
+    treasury: Pubkey,
+    mandate: Pubkey,
+    approval: Pubkey,
+    system_program: Pubkey,
+}
+
+impl anchor_lang::ToAccountMetas for IxHumanApproveLarge {
+    fn to_account_metas(&self, _is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        vec![
+            anchor_lang::prelude::AccountMeta::new(self.authority, true),
+            anchor_lang::prelude::AccountMeta::new_readonly(self.treasury, false),
+            anchor_lang::prelude::AccountMeta::new_readonly(self.mandate, false),
+            anchor_lang::prelude::AccountMeta::new(self.approval, false),
+            anchor_lang::prelude::AccountMeta::new_readonly(self.system_program, false),
+        ]
+    }
+}
+
+struct IxKillSwitch {
+    treasury: Pubkey,
+    kill_authority: Pubkey,
+}
+
+impl anchor_lang::ToAccountMetas for IxKillSwitch {
+    fn to_account_metas(&self, _is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        vec![
+            anchor_lang::prelude::AccountMeta::new(self.treasury, false),
+            anchor_lang::prelude::AccountMeta::new_readonly(self.kill_authority, true),
+        ]
+    }
+}
+
 fn program_bytes() -> Vec<u8> {
     if let Ok(path) = std::env::var("AGENT_GUARD_SO") {
         return std::fs::read(&path)
@@ -103,7 +219,7 @@ fn fund_treasury_and_mandate(
     );
     let ix = ctx
         .program()
-        .accounts(agent_guard::CreateTreasury {
+        .accounts(IxCreateTreasury {
             authority: authority.pubkey(),
             treasury,
             system_program: anchor_lang::system_program::ID,
@@ -121,7 +237,7 @@ fn fund_treasury_and_mandate(
     let expiry = ctx.svm.get_current_slot() + 100_000;
     let ix = ctx
         .program()
-        .accounts(agent_guard::SignMandate {
+        .accounts(IxSignMandate {
             authority: authority.pubkey(),
             treasury,
             agent: agent.pubkey(),
@@ -155,7 +271,7 @@ fn disburse(
         Pubkey::find_program_address(&[b"spent", mandate.as_ref(), &idem], &agent_guard::ID);
     let ix = ctx
         .program()
-        .accounts(agent_guard::AgentDisburse {
+        .accounts(IxAgentDisburse {
             agent: agent.pubkey(),
             treasury,
             mandate,
@@ -243,7 +359,7 @@ fn kill_freezes_and_unkill_restores() {
 
     let ix = ctx
         .program()
-        .accounts(agent_guard::KillSwitch {
+        .accounts(IxKillSwitch {
             kill_authority: authority.pubkey(),
             treasury,
         })
@@ -261,7 +377,7 @@ fn kill_freezes_and_unkill_restores() {
 
     let ix = ctx
         .program()
-        .accounts(agent_guard::KillSwitch {
+        .accounts(IxKillSwitch {
             kill_authority: authority.pubkey(),
             treasury,
         })
@@ -291,7 +407,7 @@ fn large_disburse_requires_single_use_approval() {
         Pubkey::find_program_address(&[b"approval", mandate.as_ref(), &idem], &agent_guard::ID);
     let ix = ctx
         .program()
-        .accounts(agent_guard::HumanApproveLarge {
+        .accounts(IxHumanApproveLarge {
             authority: authority.pubkey(),
             treasury,
             mandate,
@@ -312,7 +428,7 @@ fn large_disburse_requires_single_use_approval() {
         Pubkey::find_program_address(&[b"spent", mandate.as_ref(), &idem], &agent_guard::ID);
     let ix = ctx
         .program()
-        .accounts(agent_guard::AgentDisburseLarge {
+        .accounts(IxAgentDisburseLarge {
             agent: agent.pubkey(),
             treasury,
             mandate,
@@ -345,7 +461,7 @@ fn approve_large(
         Pubkey::find_program_address(&[b"approval", mandate.as_ref(), &idem], &agent_guard::ID);
     let ix = ctx
         .program()
-        .accounts(agent_guard::HumanApproveLarge {
+        .accounts(IxHumanApproveLarge {
             authority: authority.pubkey(),
             treasury,
             mandate,
@@ -378,7 +494,7 @@ fn disburse_large(
         Pubkey::find_program_address(&[b"spent", mandate.as_ref(), &idem], &agent_guard::ID);
     let ix = ctx
         .program()
-        .accounts(agent_guard::AgentDisburseLarge {
+        .accounts(IxAgentDisburseLarge {
             agent: agent.pubkey(),
             treasury,
             mandate,
@@ -484,7 +600,7 @@ fn killed_large_disburse_rejects_E10() {
     let approval = approve_large(&mut ctx, &authority, treasury, mandate, 1_500_000_000, idem);
     let ix = ctx
         .program()
-        .accounts(agent_guard::KillSwitch {
+        .accounts(IxKillSwitch {
             kill_authority: authority.pubkey(),
             treasury,
         })
@@ -511,7 +627,7 @@ fn kill_switch_agent_signed_rejects_E03() {
     let (treasury, _) = fund_treasury_and_mandate(&mut ctx, &authority, &agent, payee);
     let ix = ctx
         .program()
-        .accounts(agent_guard::KillSwitch {
+        .accounts(IxKillSwitch {
             kill_authority: agent.pubkey(),
             treasury,
         })
@@ -524,7 +640,7 @@ fn kill_switch_agent_signed_rejects_E03() {
         .assert_error("E03");
     let ix = ctx
         .program()
-        .accounts(agent_guard::KillSwitch {
+        .accounts(IxKillSwitch {
             kill_authority: agent.pubkey(),
             treasury,
         })

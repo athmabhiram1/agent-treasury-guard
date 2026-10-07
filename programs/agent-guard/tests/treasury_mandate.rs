@@ -23,6 +23,42 @@ impl anchor_lang::Discriminator for ArgsSignMandate {
 
 impl anchor_lang::InstructionData for ArgsSignMandate {}
 
+struct IxCreateTreasury {
+    authority: Pubkey,
+    treasury: Pubkey,
+    system_program: Pubkey,
+}
+
+impl anchor_lang::ToAccountMetas for IxCreateTreasury {
+    fn to_account_metas(&self, _is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        vec![
+            anchor_lang::prelude::AccountMeta::new(self.authority, true),
+            anchor_lang::prelude::AccountMeta::new(self.treasury, false),
+            anchor_lang::prelude::AccountMeta::new_readonly(self.system_program, false),
+        ]
+    }
+}
+
+struct IxSignMandate {
+    authority: Pubkey,
+    treasury: Pubkey,
+    agent: Pubkey,
+    mandate: Pubkey,
+    system_program: Pubkey,
+}
+
+impl anchor_lang::ToAccountMetas for IxSignMandate {
+    fn to_account_metas(&self, _is_signer: Option<bool>) -> Vec<anchor_lang::prelude::AccountMeta> {
+        vec![
+            anchor_lang::prelude::AccountMeta::new(self.authority, true),
+            anchor_lang::prelude::AccountMeta::new_readonly(self.treasury, false),
+            anchor_lang::prelude::AccountMeta::new_readonly(self.agent, false),
+            anchor_lang::prelude::AccountMeta::new(self.mandate, false),
+            anchor_lang::prelude::AccountMeta::new_readonly(self.system_program, false),
+        ]
+    }
+}
+
 fn program_bytes() -> Vec<u8> {
     if let Ok(path) = std::env::var("AGENT_GUARD_SO") {
         return std::fs::read(&path)
@@ -63,7 +99,7 @@ fn create_treasury(
     let treasury = treasury_pda(&agent_guard::ID, &authority.pubkey());
     let ix = ctx
         .program()
-        .accounts(agent_guard::CreateTreasury {
+        .accounts(IxCreateTreasury {
             authority: authority.pubkey(),
             treasury,
             system_program: anchor_lang::system_program::ID,
@@ -98,7 +134,7 @@ fn create_treasury_reinit_fails() {
     let treasury = create_treasury(&mut ctx, &authority);
     let ix = ctx
         .program()
-        .accounts(agent_guard::CreateTreasury {
+        .accounts(IxCreateTreasury {
             authority: authority.pubkey(),
             treasury,
             system_program: anchor_lang::system_program::ID,
@@ -124,7 +160,7 @@ fn sign_mandate_stores_values_and_rejects_agent_key() {
 
     let ix = ctx
         .program()
-        .accounts(agent_guard::SignMandate {
+        .accounts(IxSignMandate {
             authority: authority.pubkey(),
             treasury,
             agent: agent.pubkey(),
@@ -151,7 +187,7 @@ fn sign_mandate_stores_values_and_rejects_agent_key() {
     let rogue_mandate = mandate_pda(&agent_guard::ID, &treasury, 2);
     let ix = ctx
         .program()
-        .accounts(agent_guard::SignMandate {
+        .accounts(IxSignMandate {
             authority: agent.pubkey(),
             treasury,
             agent: agent.pubkey(),
@@ -183,7 +219,7 @@ fn sign_mandate_same_nonce_reuse_fails() {
     let sign = |ctx: &mut anchor_litesvm::AnchorContext| {
         let ix = ctx
             .program()
-            .accounts(agent_guard::SignMandate {
+            .accounts(IxSignMandate {
                 authority: authority.pubkey(),
                 treasury,
                 agent: agent.pubkey(),
