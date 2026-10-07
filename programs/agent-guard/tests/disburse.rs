@@ -1,17 +1,93 @@
 use anchor_lang::prelude::*;
 use anchor_litesvm::{AnchorLiteSVM, AssertionHelpers, Signer, TestHelpers};
 
-anchor_lang::declare_program!(agent_guard);
+#[derive(anchor_lang::AnchorSerialize)]
+struct ArgsCreateTreasury;
 
-// NOTE: `anchor build` emits target/idl/agent_guard.json; declare_program reads it
-// from <crate>/idls/agent_guard.json at compile time — `anchor test` copies it there
-// automatically when tests live under programs/<name>/tests/.
+impl anchor_lang::Discriminator for ArgsCreateTreasury {
+    const DISCRIMINATOR: &'static [u8] = &[254, 98, 217, 51, 25, 88, 140, 45];
+}
+
+impl anchor_lang::InstructionData for ArgsCreateTreasury {}
+
+#[derive(anchor_lang::AnchorSerialize)]
+struct ArgsSignMandate {
+    nonce: u64,
+    payees: Vec<Pubkey>,
+    expiry_slot: u64,
+}
+
+impl anchor_lang::Discriminator for ArgsSignMandate {
+    const DISCRIMINATOR: &'static [u8] = &[180, 207, 74, 168, 214, 174, 238, 189];
+}
+
+impl anchor_lang::InstructionData for ArgsSignMandate {}
+
+#[derive(anchor_lang::AnchorSerialize)]
+struct ArgsAgentDisburse {
+    amount: u64,
+    idem_key: [u8; 32],
+}
+
+impl anchor_lang::Discriminator for ArgsAgentDisburse {
+    const DISCRIMINATOR: &'static [u8] = &[15, 108, 54, 166, 16, 152, 254, 9];
+}
+
+impl anchor_lang::InstructionData for ArgsAgentDisburse {}
+
+#[derive(anchor_lang::AnchorSerialize)]
+struct ArgsHumanApproveLarge {
+    amount: u64,
+    idem_key: [u8; 32],
+}
+
+impl anchor_lang::Discriminator for ArgsHumanApproveLarge {
+    const DISCRIMINATOR: &'static [u8] = &[180, 15, 40, 177, 23, 17, 172, 129];
+}
+
+impl anchor_lang::InstructionData for ArgsHumanApproveLarge {}
+
+#[derive(anchor_lang::AnchorSerialize)]
+struct ArgsAgentDisburseLarge {
+    amount: u64,
+    idem_key: [u8; 32],
+}
+
+impl anchor_lang::Discriminator for ArgsAgentDisburseLarge {
+    const DISCRIMINATOR: &'static [u8] = &[68, 254, 94, 191, 136, 124, 147, 20];
+}
+
+impl anchor_lang::InstructionData for ArgsAgentDisburseLarge {}
+
+#[derive(anchor_lang::AnchorSerialize)]
+struct ArgsKillSwitch {
+    kill: bool,
+}
+
+impl anchor_lang::Discriminator for ArgsKillSwitch {
+    const DISCRIMINATOR: &'static [u8] = &[189, 76, 222, 157, 130, 131, 241, 144];
+}
+
+impl anchor_lang::InstructionData for ArgsKillSwitch {}
+
+fn program_bytes() -> Vec<u8> {
+    if let Ok(path) = std::env::var("AGENT_GUARD_SO") {
+        return std::fs::read(&path)
+            .unwrap_or_else(|_| panic!("missing Solana program binary at {}", path));
+    }
+    for candidate in [
+        "../../target/deploy/agent_guard.so",
+        "target/deploy/agent_guard.so",
+    ] {
+        if let Ok(bytes) = std::fs::read(candidate) {
+            return bytes;
+        }
+    }
+    panic!("missing Solana program binary; run `anchor build` first")
+}
 
 fn ctx_with_program() -> anchor_litesvm::AnchorContext {
-    AnchorLiteSVM::build_with_program(
-        agent_guard::ID,
-        include_bytes!("../../target/deploy/agent_guard.so"),
-    )
+    AnchorLiteSVM::build_with_program(agent_guard::ID, &program_bytes())
 }
 
 fn fund_treasury_and_mandate(
@@ -27,12 +103,12 @@ fn fund_treasury_and_mandate(
     );
     let ix = ctx
         .program()
-        .accounts(agent_guard::client::accounts::CreateTreasury {
+        .accounts(agent_guard::CreateTreasury {
             authority: authority.pubkey(),
             treasury,
             system_program: anchor_lang::system_program::ID,
         })
-        .args(agent_guard::client::args::CreateTreasury)
+        .args(ArgsCreateTreasury)
         .instruction()
         .unwrap();
     ctx.execute_instruction(ix, &[authority])
@@ -45,14 +121,14 @@ fn fund_treasury_and_mandate(
     let expiry = ctx.svm.get_current_slot() + 100_000;
     let ix = ctx
         .program()
-        .accounts(agent_guard::client::accounts::SignMandate {
+        .accounts(agent_guard::SignMandate {
             authority: authority.pubkey(),
             treasury,
             agent: agent.pubkey(),
             mandate,
             system_program: anchor_lang::system_program::ID,
         })
-        .args(agent_guard::client::args::SignMandate {
+        .args(ArgsSignMandate {
             nonce: 1,
             payees: vec![payee],
             expiry_slot: expiry,
@@ -79,7 +155,7 @@ fn disburse(
         Pubkey::find_program_address(&[b"spent", mandate.as_ref(), &idem], &agent_guard::ID);
     let ix = ctx
         .program()
-        .accounts(agent_guard::client::accounts::AgentDisburse {
+        .accounts(agent_guard::AgentDisburse {
             agent: agent.pubkey(),
             treasury,
             mandate,
@@ -87,7 +163,7 @@ fn disburse(
             spend_record: record,
             system_program: anchor_lang::system_program::ID,
         })
-        .args(agent_guard::client::args::AgentDisburse {
+        .args(ArgsAgentDisburse {
             amount,
             idem_key: idem,
         })
@@ -167,11 +243,11 @@ fn kill_freezes_and_unkill_restores() {
 
     let ix = ctx
         .program()
-        .accounts(agent_guard::client::accounts::KillSwitch {
+        .accounts(agent_guard::KillSwitch {
             kill_authority: authority.pubkey(),
             treasury,
         })
-        .args(agent_guard::client::args::KillSwitch { kill: true })
+        .args(ArgsKillSwitch { kill: true })
         .instruction()
         .unwrap();
     ctx.execute_instruction(ix, &[&authority])
@@ -185,11 +261,11 @@ fn kill_freezes_and_unkill_restores() {
 
     let ix = ctx
         .program()
-        .accounts(agent_guard::client::accounts::KillSwitch {
+        .accounts(agent_guard::KillSwitch {
             kill_authority: authority.pubkey(),
             treasury,
         })
-        .args(agent_guard::client::args::KillSwitch { kill: false })
+        .args(ArgsKillSwitch { kill: false })
         .instruction()
         .unwrap();
     ctx.execute_instruction(ix, &[&authority])
@@ -215,14 +291,14 @@ fn large_disburse_requires_single_use_approval() {
         Pubkey::find_program_address(&[b"approval", mandate.as_ref(), &idem], &agent_guard::ID);
     let ix = ctx
         .program()
-        .accounts(agent_guard::client::accounts::HumanApproveLarge {
+        .accounts(agent_guard::HumanApproveLarge {
             authority: authority.pubkey(),
             treasury,
             mandate,
             approval,
             system_program: anchor_lang::system_program::ID,
         })
-        .args(agent_guard::client::args::HumanApproveLarge {
+        .args(ArgsHumanApproveLarge {
             amount: over,
             idem_key: idem,
         })
@@ -236,7 +312,7 @@ fn large_disburse_requires_single_use_approval() {
         Pubkey::find_program_address(&[b"spent", mandate.as_ref(), &idem], &agent_guard::ID);
     let ix = ctx
         .program()
-        .accounts(agent_guard::client::accounts::AgentDisburseLarge {
+        .accounts(agent_guard::AgentDisburseLarge {
             agent: agent.pubkey(),
             treasury,
             mandate,
@@ -245,7 +321,7 @@ fn large_disburse_requires_single_use_approval() {
             approval,
             system_program: anchor_lang::system_program::ID,
         })
-        .args(agent_guard::client::args::AgentDisburseLarge {
+        .args(ArgsAgentDisburseLarge {
             amount: over,
             idem_key: idem,
         })
@@ -269,14 +345,14 @@ fn approve_large(
         Pubkey::find_program_address(&[b"approval", mandate.as_ref(), &idem], &agent_guard::ID);
     let ix = ctx
         .program()
-        .accounts(agent_guard::client::accounts::HumanApproveLarge {
+        .accounts(agent_guard::HumanApproveLarge {
             authority: authority.pubkey(),
             treasury,
             mandate,
             approval,
             system_program: anchor_lang::system_program::ID,
         })
-        .args(agent_guard::client::args::HumanApproveLarge {
+        .args(ArgsHumanApproveLarge {
             amount,
             idem_key: idem,
         })
@@ -302,7 +378,7 @@ fn disburse_large(
         Pubkey::find_program_address(&[b"spent", mandate.as_ref(), &idem], &agent_guard::ID);
     let ix = ctx
         .program()
-        .accounts(agent_guard::client::accounts::AgentDisburseLarge {
+        .accounts(agent_guard::AgentDisburseLarge {
             agent: agent.pubkey(),
             treasury,
             mandate,
@@ -311,7 +387,7 @@ fn disburse_large(
             approval,
             system_program: anchor_lang::system_program::ID,
         })
-        .args(agent_guard::client::args::AgentDisburseLarge {
+        .args(ArgsAgentDisburseLarge {
             amount,
             idem_key: idem,
         })
@@ -408,11 +484,11 @@ fn killed_large_disburse_rejects_E10() {
     let approval = approve_large(&mut ctx, &authority, treasury, mandate, 1_500_000_000, idem);
     let ix = ctx
         .program()
-        .accounts(agent_guard::client::accounts::KillSwitch {
+        .accounts(agent_guard::KillSwitch {
             kill_authority: authority.pubkey(),
             treasury,
         })
-        .args(agent_guard::client::args::KillSwitch { kill: true })
+        .args(ArgsKillSwitch { kill: true })
         .instruction()
         .unwrap();
     ctx.execute_instruction(ix, &[&authority])
@@ -435,11 +511,11 @@ fn kill_switch_agent_signed_rejects_E03() {
     let (treasury, _) = fund_treasury_and_mandate(&mut ctx, &authority, &agent, payee);
     let ix = ctx
         .program()
-        .accounts(agent_guard::client::accounts::KillSwitch {
+        .accounts(agent_guard::KillSwitch {
             kill_authority: agent.pubkey(),
             treasury,
         })
-        .args(agent_guard::client::args::KillSwitch { kill: true })
+        .args(ArgsKillSwitch { kill: true })
         .instruction()
         .unwrap();
     ctx.execute_instruction(ix, &[&agent])
@@ -448,11 +524,11 @@ fn kill_switch_agent_signed_rejects_E03() {
         .assert_error("E03");
     let ix = ctx
         .program()
-        .accounts(agent_guard::client::accounts::KillSwitch {
+        .accounts(agent_guard::KillSwitch {
             kill_authority: agent.pubkey(),
             treasury,
         })
-        .args(agent_guard::client::args::KillSwitch { kill: false })
+        .args(ArgsKillSwitch { kill: false })
         .instruction()
         .unwrap();
     ctx.execute_instruction(ix, &[&agent])
@@ -485,7 +561,7 @@ fn disburse_expired_mandate_rejects_E08() {
     let agent = ctx.svm.create_funded_account(10_000_000_000).unwrap();
     let payee = ctx.svm.create_funded_account(1_000_000).unwrap().pubkey();
     let (treasury, mandate) = fund_treasury_and_mandate(&mut ctx, &authority, &agent, payee);
-    let m: agent_guard::accounts::Mandate = ctx.get_account(&mandate).unwrap();
+    let m: agent_guard::state::Mandate = ctx.get_account(&mandate).unwrap();
     ctx.svm.warp_to_slot(m.expiry_slot + 10);
     disburse(
         &mut ctx, &agent, treasury, mandate, payee, 10_000, [31u8; 32],
