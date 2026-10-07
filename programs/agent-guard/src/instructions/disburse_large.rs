@@ -115,19 +115,16 @@ pub fn handler(ctx: Context<AgentDisburseLarge>, amount: u64, idem_key: [u8; 32]
 
     let authority = ctx.accounts.treasury.authority;
     let bump = ctx.accounts.treasury.bump;
-    let seeds: &[&[u8]] = &[b"treasury", authority.as_ref(), &[bump]];
-    transfer(
-        CpiContext::new_with_signer(
-            ctx.accounts.system_program.to_account_info(),
-            Transfer {
-                from: ctx.accounts.treasury.to_account_info(),
-                to: ctx.accounts.payee.to_account_info(),
-            },
-            &[seeds],
-        ),
-        amount,
-    )?;
-
+    let signer_seeds: &[&[&[u8]]] = &[&[b"treasury", authority.as_ref(), &[bump]]];
+    let cpi_context = CpiContext::new(
+        ctx.accounts.system_program.to_account_info(),
+        Transfer {
+            from: ctx.accounts.treasury.to_account_info(),
+            to: ctx.accounts.payee.to_account_info(),
+        },
+    )
+    .with_signer(signer_seeds);
+    transfer(cpi_context, amount)?;
     ctx.accounts.treasury.spent_window = ctx
         .accounts
         .treasury
