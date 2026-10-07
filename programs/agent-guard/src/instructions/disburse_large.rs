@@ -117,7 +117,7 @@ pub fn handler(ctx: Context<AgentDisburseLarge>, amount: u64, idem_key: [u8; 32]
     let bump = ctx.accounts.treasury.bump;
     let signer_seeds: &[&[&[u8]]] = &[&[b"treasury", authority.as_ref(), &[bump]]];
     let cpi_context = CpiContext::new(
-        ctx.accounts.system_program.to_account_info(),
+        ctx.accounts.system_program.key(),
         Transfer {
             from: ctx.accounts.treasury.to_account_info(),
             to: ctx.accounts.payee.to_account_info(),
