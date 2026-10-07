@@ -1,0 +1,18 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.89.0
+        with:
+          components: rustfmt, clippy
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 23.9.0
+      - run: npm i -g @anchor-lang/cli@1.2.0 || cargo install --git https://github.com/otter-sec/anchor --tag v1.2.0 anchor-cli --locked
+      - run: anchor build
+      - run: cargo test
+      - run: cargo fmt --check
+      - run: cargo clippy -- -D warnings

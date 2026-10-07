@@ -1,0 +1,26 @@
+[package]
+name = "agent-guard"
+version = "0.1.0"
+description = "Agent Treasury Guard — mandate-bound idempotent disbursement vault"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "agent_guard"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = "1.2.0"
+anchor-spl = "1.2.0"
+
+[dev-dependencies]
+anchor-litesvm = "0.4"
+
+[profile.release]
+overflow-checks = true
