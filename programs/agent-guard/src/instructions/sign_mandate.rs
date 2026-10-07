@@ -23,6 +23,9 @@ pub struct SignMandate<'info> {
         has_one = authority @ GuardError::Unauthorized,
     )]
     pub treasury: Account<'info, Treasury>,
+    /// CHECK: agent pubkey is only recorded into the mandate; it signs
+    /// nothing here. Authorization is enforced at use sites via
+    /// require_keys_eq against mandate.agent in both disburse handlers.
     pub agent: UncheckedAccount<'info>,
     #[account(
         init,
